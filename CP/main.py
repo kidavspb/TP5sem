@@ -1,6 +1,8 @@
 import copy
 import random
 import numpy
+import tkinter as tk
+from tkinter import messagebox, filedialog
 
 EPS = 1e-3  # требуемая точность
 MAX_ITER = 10000  # максимально допустимое число итераций
@@ -38,25 +40,72 @@ def about_btn():
     about_description_lbl.grid(row=3)
 
     filewin.mainloop()
+
+
 def import_btn():
-    # from PIL import ImageTk, Image
-    #
-    # filewin = tk.Toplevel(root)
-    # img = ImageTk.PhotoImage(Image.open("me.png"))
-    # about_photo_lbl = tk.Label(filewin, image=img)
-    # about_photo_lbl.grid(row=0)
-    #
-    # about_name_lbl = tk.Label(filewin, text="Vadim Dmitriev", font='Helvetica 18 bold')
-    # about_name_lbl.grid(row=1)
-    #
-    # about_description_lbl = tk.Label(filewin, text="I spent an hour on this screen")
-    # about_description_lbl.grid(row=2)
-    #
-    # about_description_lbl = tk.Label(filewin, text="(c) 2022-2022 State University of Aerospace Instrumentation.")
-    # about_description_lbl.grid(row=3)
-    #
-    # filewin.mainloop()
-    print("hi")
+    filename = str()
+    def open_file():
+        global filename
+        filename = filedialog.askopenfilename()
+        file = open(filename, 'r')
+        data = file.read()
+        textWidget.delete(1.0, "end")
+        textWidget.insert(1.0, data)
+        file.close()
+
+    def write_file(x):
+        # file = open("[solved].txt"+filename, 'w')
+        file = open("solved.txt", 'w')
+        file.write(x)
+        file.close()
+
+    def solve_file():
+        data = textWidget.get("0.0", "end")
+        lines = data.split("\n")[:-1]
+        a = numpy.zeros((len(lines), len(lines)))
+        b = [0 for i in range(len(lines))]
+        rows = 0
+        try:
+            for line in lines:
+                nums = line.split()
+                if len(lines) != len(nums)-1:
+                    raise Exception("Матрица не квадратная")
+
+                columns = 0
+                for num in nums:
+                    if columns == len(nums)-1:
+                        b[rows] = int(num)
+                    else:
+                        a[rows][columns] = int(num)
+                    columns += 1
+                rows += 1
+        except Exception as ex:
+            print(type(ex).__name__, ex.args)
+            messagebox.showinfo(type(ex).__name__, ex.args[0])
+        else:
+            # print(a, b)
+            x, n = solution(a, b)
+            write_file(str(x))
+
+
+    newin = tk.Toplevel(root)
+    textWidget = tk.Text(newin)
+    textWidget.grid(row=3, column=0, columnspan=10)
+    open_file()
+
+    eps_lbl = tk.Label(newin, text="Точность решения")
+    eps_lbl.grid(row=0, column=0, columnspan=2)
+    eps_ent = tk.Entry(newin, width=5)
+    eps_ent.insert(0, "3")
+    eps_ent.grid(row=0, column=2)
+    eps_lbl = tk.Label(newin, text="знаков")
+    eps_lbl.grid(row=0, column=3)
+
+    solve_btn = tk.Button(newin, text="Решить", command=solve_file)
+    solve_btn.grid(row=0, column=5)
+
+    newin.mainloop()
+
 def export_btn():
     # filewin = tk.Toplevel(root)
     # img = ImageTk.PhotoImage(Image.open("me.png"))
@@ -101,13 +150,16 @@ def rand_gen(n):
 # Проверка матрицы коэффициентов на корректность
 def isCorrectArray(a, b):
     for row in range(0, len(a)):
-        if (len(a[row]) != len(b)):
+        if len(a[row]) != len(b):
             print('Не соответствует размерность')
             return False
 
-    for row in range(0, len(a)):
-        if (a[row][row] == 0):
+        if a[row][row] == 0:
             print('Нулевые элементы на главной диагонали')
+            return False
+
+        if a[row][row] < sum(abs(a[row])-abs(a[row][row])):
+            print('Не выполнено условие сходимости')
             return False
     return True
 
@@ -183,8 +235,6 @@ def check(a, b, x):
 
 
 # MAIN - блок программмы
-import tkinter as tk
-from tkinter import messagebox
 
 root = tk.Tk()
 root.title("Решение СЛАУ методом последовательных итераций")

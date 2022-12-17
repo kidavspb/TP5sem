@@ -90,7 +90,7 @@ def import_btn():
         except Exception as ex:
             print(type(ex).__name__, ex.args)
             if type(ex).__name__ == "ValueError" and "invalid literal for int() with base 10" in ex.args[0]:
-                messagebox.showinfo("Ошибка", "Матрица должна состоять только из целых чисел!")
+                messagebox.showinfo("Ошибка", "Принимаются только целые числа!")
             elif "Точность" in ex.args[0]:
                 if "положительное целое число" in ex.args[0]:
                     messagebox.showinfo("Ошибка", "Точность должна быть целым положительным числом!")
@@ -131,48 +131,32 @@ def import_btn():
 
 def export_btn():
     def save_at_file():
-        try:
-            filename = filedialog.asksaveasfilename()
-            file = open(filename, 'w')
-
-            data = textWidget.get("0.0", "end")[:-1]
-            lines = data.split("\n")
-            rows = 0
-            for line in lines:
-                nums = line.split()
-                if len(lines) != len(nums) - 1:
-                    raise Exception("Матрица не квадратная")
-                columns = 0
-                for num in nums:
-                    int(num)
-                    columns += 1
-                rows += 1
-        except Exception as ex:
-            print(type(ex).__name__, ex.args)
-            if type(ex).__name__ == "ValueError" in ex.args[0]:
-                messagebox.showinfo("Ошибка", "Матрица должна состоять только из целых чисел!")
-            elif type(ex).__name__ == "FileNotFoundError" in ex.args[0]:
-                pass
-            else:
-                messagebox.showinfo("Ошибка", "Матрица заполнена неправильно!")
-        else:
-            file.write(data)
-            file.close()
+        data = textWidget.get("0.0", "end")[:-1]
+        filename = filedialog.asksaveasfilename()
+        file = open(filename, 'w')
+        file.write(data)
+        file.close()
 
     def show_rand_gen():
-        n = int(num_ent.get())
-        a, b = rand_gen(n)
-        data = str()
-        for row in range(0, len(a)):
-            for column in range(0, len(b)):
-                data += str(round(a[row][column]))
-                data += " "
-            data += str(round(b[row]))
-            if row != len(b) - 1:
-                data += "\n"
+        try:
+            n = int(num_ent.get())
+            if n <= 0:
+                raise Exception()
+            a, b = rand_gen(n)
+            data = str()
+            for row in range(0, len(a)):
+                for column in range(0, len(b)):
+                    data += str(round(a[row][column]))
+                    data += " "
+                data += str(round(b[row]))
+                if row != len(b) - 1:
+                    data += "\n"
 
-        textWidget.delete(1.0, "end")
-        textWidget.insert(1.0, data)
+            textWidget.delete(1.0, "end")
+            textWidget.insert(1.0, data)
+        except Exception as ex:
+            print(type(ex).__name__, ex.args)
+            messagebox.showinfo("Ошибка", "Количество уравнений должно быть целым положительным числом!")
 
     newwin = tk.Toplevel(root)
     newwin.columnconfigure(6, weight=1)

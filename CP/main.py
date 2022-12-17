@@ -3,9 +3,13 @@ import random
 import numpy
 import tkinter as tk
 from tkinter import messagebox, filedialog
+import os, psutil
+
+# from memory_profiler import profile
 
 EPS = 1e-3  # требуемая точность
 MAX_ITER = 10000  # максимально допустимое число итераций
+
 
 # Пробные данные для уравнения A*X = B
 # x = [1.10202, 0.99091, 1.01111]
@@ -15,12 +19,6 @@ MAX_ITER = 10000  # максимально допустимое число ит�
 #      [-1, 1, 10]]   # -x1   + x2    + 10*x3 = 10
 #
 # b = [11, 10, 10]
-
-# a = [[8, 1, 1],   # 10*x1 + x2    - x3    = 11
-#      [1, 5, -1],   # x1    + 10*x2 - x3    = 10
-#      [1, -1, 5]]   # -x1   + x2    + 10*x3 = 10
-#
-# b = [26, 7, 7]
 
 def about_btn():
     from PIL import ImageTk, Image
@@ -44,6 +42,7 @@ def about_btn():
 
 def import_btn():
     filename = str()
+
     def open_file():
         global filename
         filename = filedialog.askopenfilename()
@@ -54,9 +53,9 @@ def import_btn():
         file.close()
 
     def write_file(x):
-        # file = open("[solved].txt"+filename, 'w')
-        file = open("solved.txt", 'w')
-        file.write(x)
+        global filename
+        file = open(filename[:filename.rfind('/') + 1] + "[solved] " + filename[filename.rfind('/') + 1:], 'w')
+        file.write(str([round(val, round(-numpy.log10(EPS))) for val in x]))
         file.close()
 
     def solve_file():
@@ -68,61 +67,132 @@ def import_btn():
         try:
             for line in lines:
                 nums = line.split()
-                if len(lines) != len(nums)-1:
+                if len(lines) != len(nums) - 1:
                     raise Exception("Матрица не квадратная")
 
                 columns = 0
                 for num in nums:
-                    if columns == len(nums)-1:
+                    if columns == len(nums) - 1:
                         b[rows] = int(num)
                     else:
                         a[rows][columns] = int(num)
                     columns += 1
                 rows += 1
+
+            global EPS
+            EPS = int(eps_ent.get())
+            if EPS <= 0:
+                raise Exception("Точность — положительное целое число")
+            if EPS > 15:
+                raise Exception("Точность — слишком высокая(>= 15)")
+            EPS = 10 ** -EPS
+            x, n = solution(a, b)
         except Exception as ex:
             print(type(ex).__name__, ex.args)
-            messagebox.showinfo(type(ex).__name__, ex.args[0])
+            if type(ex).__name__ == "ValueError" and "invalid literal for int() with base 10" in ex.args[0]:
+                messagebox.showinfo("Ошибка", "Матрица должна состоять только из целых чисел!")
+            elif "Точность" in ex.args[0]:
+                if "положительное целое число" in ex.args[0]:
+                    messagebox.showinfo("Ошибка", "Точность должна быть целым положительным числом!")
+                elif "слишком высокая" in ex.args[0]:
+                    messagebox.showinfo("Ошибка", "Точность не должна быть больше 15 знаков!")
+            elif "Матрица не квадратная" in ex.args[0]:
+                messagebox.showinfo("Ошибка", "Матрица не квадратна!")
+            else:
+                messagebox.showinfo("Ошибка", "Матрица заполнена неправильно!")
         else:
             # print(a, b)
-            x, n = solution(a, b)
-            write_file(str(x))
-
+            write_file(x)
 
     newin = tk.Toplevel(root)
+    newin.columnconfigure(6, weight=1)
+    newin.rowconfigure(2, weight=1)
     textWidget = tk.Text(newin)
-    textWidget.grid(row=3, column=0, columnspan=10)
-    open_file()
+    textWidget.grid(row=1, column=0, columnspan=10, rowspan=10, sticky=tk.E + tk.W + tk.S + tk.N)
+    try:
+        open_file()
+    except Exception as ex:
+        print(type(ex).__name__, ex.args)
+        newin.destroy()
+    else:
+        eps_lbl = tk.Label(newin, text="Точность решения")
+        eps_lbl.grid(row=0, column=0, columnspan=2)
+        eps_ent = tk.Entry(newin, width=5)
+        eps_ent.insert(0, "3")
+        eps_ent.grid(row=0, column=2)
+        eps_lbl = tk.Label(newin, text="знаков")
+        eps_lbl.grid(row=0, column=3)
 
-    eps_lbl = tk.Label(newin, text="Точность решения")
-    eps_lbl.grid(row=0, column=0, columnspan=2)
-    eps_ent = tk.Entry(newin, width=5)
-    eps_ent.insert(0, "3")
-    eps_ent.grid(row=0, column=2)
-    eps_lbl = tk.Label(newin, text="знаков")
-    eps_lbl.grid(row=0, column=3)
+        solve_btn = tk.Button(newin, text="Решить", command=solve_file)
+        solve_btn.grid(row=0, column=5)
 
-    solve_btn = tk.Button(newin, text="Решить", command=solve_file)
-    solve_btn.grid(row=0, column=5)
+        newin.mainloop()
 
-    newin.mainloop()
 
 def export_btn():
-    # filewin = tk.Toplevel(root)
-    # img = ImageTk.PhotoImage(Image.open("me.png"))
-    # about_photo_lbl = tk.Label(filewin, image=img)
-    # about_photo_lbl.grid(row=0)
-    #
-    # about_name_lbl = tk.Label(filewin, text="Vadim Dmitriev", font='Helvetica 18 bold')
-    # about_name_lbl.grid(row=1)
-    #
-    # about_description_lbl = tk.Label(filewin, text="I spent an hour on this screen")
-    # about_description_lbl.grid(row=2)
-    #
-    # about_description_lbl = tk.Label(filewin, text="(c) 2022-2022 State University of Aerospace Instrumentation.")
-    # about_description_lbl.grid(row=3)
-    #
-    # filewin.mainloop()
-    print("bye")
+    def save_at_file():
+        try:
+            filename = filedialog.asksaveasfilename()
+            file = open(filename, 'w')
+
+            data = textWidget.get("0.0", "end")[:-1]
+            lines = data.split("\n")
+            rows = 0
+            for line in lines:
+                nums = line.split()
+                if len(lines) != len(nums) - 1:
+                    raise Exception("Матрица не квадратная")
+                columns = 0
+                for num in nums:
+                    int(num)
+                    columns += 1
+                rows += 1
+        except Exception as ex:
+            print(type(ex).__name__, ex.args)
+            if type(ex).__name__ == "ValueError" in ex.args[0]:
+                messagebox.showinfo("Ошибка", "Матрица должна состоять только из целых чисел!")
+            elif type(ex).__name__ == "FileNotFoundError" in ex.args[0]:
+                pass
+            else:
+                messagebox.showinfo("Ошибка", "Матрица заполнена неправильно!")
+        else:
+            file.write(data)
+            file.close()
+
+    def show_rand_gen():
+        n = int(num_ent.get())
+        a, b = rand_gen(n)
+        data = str()
+        for row in range(0, len(a)):
+            for column in range(0, len(b)):
+                data += str(round(a[row][column]))
+                data += " "
+            data += str(round(b[row]))
+            if row != len(b) - 1:
+                data += "\n"
+
+        textWidget.delete(1.0, "end")
+        textWidget.insert(1.0, data)
+
+    newwin = tk.Toplevel(root)
+    newwin.columnconfigure(6, weight=1)
+    newwin.rowconfigure(2, weight=1)
+    textWidget = tk.Text(newwin)
+    textWidget.grid(row=1, column=0, columnspan=10, rowspan=10, sticky=tk.E + tk.W + tk.S + tk.N)
+
+    num_lbl = tk.Label(newwin, text="Количество уравнений")
+    num_lbl.grid(row=0, column=0, columnspan=2)
+    num_ent = tk.Entry(newwin, width=5)
+    num_ent.insert(0, "3")
+    num_ent.grid(row=0, column=2)
+
+    gen_btn = tk.Button(newwin, text="Создать", command=show_rand_gen)
+    gen_btn.grid(row=0, column=4)
+    save_btn = tk.Button(newwin, text="Сохранить", command=save_at_file)
+    save_btn.grid(row=0, column=5)
+
+    newwin.mainloop()
+
 
 def print_SLAE(a, b):
     for row in range(0, len(a)):
@@ -151,17 +221,20 @@ def rand_gen(n):
 def isCorrectArray(a, b):
     for row in range(0, len(a)):
         if len(a[row]) != len(b):
-            print('Не соответствует размерность')
-            return False
+            raise Exception("Не соответствует размерность")
+            # print('Не соответствует размерность')
+            # return False
 
         if a[row][row] == 0:
-            print('Нулевые элементы на главной диагонали')
-            return False
+            raise Exception("Нулевые элементы на главной диагонали")
+            # print('Нулевые элементы на главной диагонали')
+            # return False
 
-        if a[row][row] < sum(abs(a[row])-abs(a[row][row])):
-            print('Не выполнено условие сходимости')
-            return False
-    return True
+        if a[row][row] < sum(abs(a[row]) - abs(a[row][row])):
+            raise Exception("Не выполнено условие сходимости")
+            # print('Не выполнено условие сходимости')
+            # return False
+    # return True
 
 
 # Условие завершения программы
@@ -187,38 +260,40 @@ def toNormal(a, b):
 
 
 # Процедура решения
+# @profile
 def solution(a, b):
-    if not isCorrectArray(a, b):
-        print('Ошибка в исходных данных')
-    else:
-        SLAE = toNormal(a, b)
-        count = len(b)  # количество корней
+    isCorrectArray(a, b)
 
-        x = [SLAE[i][0] for i in range(0, count)]  # начальное приближение корней
+    SLAE = toNormal(a, b)
+    count = len(b)  # количество корней
 
-        numberOfIter = 0  # подсчет количества итераций
-        while (numberOfIter < MAX_ITER):
+    x = [SLAE[i][0] for i in range(0, count)]  # начальное приближение корней
 
-            x_prev = copy.deepcopy(x)
+    number_of_iter = 0  # подсчет количества итераций
+    while number_of_iter < MAX_ITER:
 
-            for row in range(0, len(a)):
-                j = 0
-                x[row] = SLAE[row][0]
-                j += 1
-                for column in range(0, len(a[row])):
-                    if row != column:
-                        tmp = SLAE[row][j] * x_prev[column]
-                        x[row] += tmp
-                        j += 1
+        x_prev = copy.deepcopy(x)
 
-            if isEnough(x_prev, x):  # проверка на выход
-                break
+        for row in range(0, len(a)):
+            j = 0
+            x[row] = SLAE[row][0]
+            j += 1
+            for column in range(0, len(a[row])):
+                if row != column:
+                    # tmp = SLAE[row][j] * x_prev[column]
+                    tmp = SLAE[row][j] * x[column]
+                    x[row] += tmp
+                    j += 1
 
-            numberOfIter += 1
+        if isEnough(x_prev, x):  # проверка на выход
+            break
 
-        print('Количество итераций на решение: ', numberOfIter)
+        number_of_iter += 1
 
-        return x, numberOfIter
+    print('Количество итераций на решение: ', number_of_iter)
+
+    print(psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2)
+    return x, number_of_iter
 
 
 def check(a, b, x):
@@ -234,11 +309,10 @@ def check(a, b, x):
     return True
 
 
-# MAIN - блок программмы
+# MAIN - блок программы
 
 root = tk.Tk()
 root.title("Решение СЛАУ методом последовательных итераций")
-# root.geometry("850x200")
 
 root.columnconfigure(7, weight=1)
 root.rowconfigure(8, weight=1)
@@ -262,7 +336,7 @@ eq1X_lbl = tk.Label(root, text="X +")
 eq1X_lbl.grid(row=1, column=1)
 eq1Y_lbl = tk.Label(root, text="Y +")
 eq1Y_lbl.grid(row=1, column=3)
-eq1Z_lbl = tk.Label(root, text="Z +")
+eq1Z_lbl = tk.Label(root, text="Z =")
 eq1Z_lbl.grid(row=1, column=5)
 eq1X_ent = tk.Entry(root, width=5)
 eq1X_ent.grid(row=1, column=0)
@@ -277,7 +351,7 @@ eq2X_lbl = tk.Label(root, text="X +")
 eq2X_lbl.grid(row=3, column=1)
 eq2Y_lbl = tk.Label(root, text="Y +")
 eq2Y_lbl.grid(row=3, column=3)
-eq2Z_lbl = tk.Label(root, text="Z +")
+eq2Z_lbl = tk.Label(root, text="Z =")
 eq2Z_lbl.grid(row=3, column=5)
 eq2X_ent = tk.Entry(root, width=5)
 eq2X_ent.grid(row=3, column=0)
@@ -292,7 +366,7 @@ eq3X_lbl = tk.Label(root, text="X +")
 eq3X_lbl.grid(row=5, column=1)
 eq3Y_lbl = tk.Label(root, text="Y +")
 eq3Y_lbl.grid(row=5, column=3)
-eq3Z_lbl = tk.Label(root, text="Z +")
+eq3Z_lbl = tk.Label(root, text="Z =")
 eq3Z_lbl.grid(row=5, column=5)
 eq3X_ent = tk.Entry(root, width=5)
 eq3X_ent.grid(row=5, column=0)
@@ -364,23 +438,27 @@ def start():
         else:
             messagebox.showinfo("Ошибка", "Заполните поля правильно!")
     else:
-        x, num = solution(a, b)
-
-        resX_ent.config(text=str(round(x[0], 3)))
-        resY_ent.config(text=str(round(x[1], 3)))
-        resZ_ent.config(text=str(round(x[2], 3)))
-
-        if check(a, b, x):
-            check_lbl.config(text="✅  Сходится")
+        try:
+            x, num = solution(a, b)
+        except Exception as ex:
+            print(type(ex).__name__, ex.args)
+            messagebox.showinfo(type(ex).__name__, ex.args[0])
         else:
-            check_lbl.config(text="❌ Не сходится")
+            resX_ent.config(text=str(round(x[0], 3)))
+            resY_ent.config(text=str(round(x[1], 3)))
+            resZ_ent.config(text=str(round(x[2], 3)))
 
-        if num % 10 == 0 or num % 10 > 4:
-            iter_lbl.config(text=f"({num} итераций)")
-        elif num % 10 == 1:
-            iter_lbl.config(text=f"({num} итерация)")
-        elif num % 10 <= 4:
-            iter_lbl.config(text=f"({num} итерации)")
+            if check(a, b, x):
+                check_lbl.config(text="✅  Сходится")
+            else:
+                check_lbl.config(text="❌ Не сходится")
+
+            if num % 10 == 0 or num % 10 > 4:
+                iter_lbl.config(text=f"({num} итераций)")
+            elif num % 10 == 1:
+                iter_lbl.config(text=f"({num} итерация)")
+            elif num % 10 <= 4:
+                iter_lbl.config(text=f"({num} итерации)")
 
 
 def fill():
@@ -422,8 +500,8 @@ iter_lbl.grid(row=1, column=7)
 
 menubar = tk.Menu(root)
 filemenu = tk.Menu(menubar, tearoff=0)
+filemenu.add_command(label="Создать", command=export_btn)
 filemenu.add_command(label="Импорт", command=import_btn)
-filemenu.add_command(label="Экспорт", command=export_btn)
 filemenu.add_separator()
 filemenu.add_command(label="О программе", command=about_btn)
 filemenu.add_command(label="Exit", command=root.destroy)
